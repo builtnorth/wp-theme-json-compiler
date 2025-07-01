@@ -1,4 +1,4 @@
-# @builtnorth/wp-theme-json-compiler
+# WP Theme JSON Compiler
 
 A modular theme.json compiler for WordPress themes.
 
@@ -15,6 +15,14 @@ A modular theme.json compiler for WordPress themes.
 - Supports granular splitting for `settings`, `styles`, and more
 - CLI commands for `compile`, `split`, and `watch`
 
+## Installation
+
+```bash
+npm install @builtnorth/wp-theme-json-compiler
+```
+
+```
+
 ## CLI Commands
 
 - **split**: Splits a current `theme.json` file into modular JavaScript files in the `theme-config` directory. This makes it easier to manage and edit theme settings in a structured way.
@@ -26,9 +34,11 @@ A modular theme.json compiler for WordPress themes.
 ### CLI
 
 ```
+
 npx @builtnorth/wp-theme-json-compiler compile --theme-path=wp-content/themes/your-theme
 npx @builtnorth/wp-theme-json-compiler split --theme-path=wp-content/themes/your-theme
 npx @builtnorth/wp-theme-json-compiler watch --theme-path=wp-content/themes/your-theme
+
 ```
 
 - If `--theme-path` is omitted, the current working directory is used.
@@ -38,9 +48,11 @@ npx @builtnorth/wp-theme-json-compiler watch --theme-path=wp-content/themes/your
 Add to your root `package.json` scripts:
 
 ```
+
 "theme-json:compile": "wp-theme-json-compiler compile --theme-path=wp-content/themes/your-theme",
 "theme-json:split": "wp-theme-json-compiler split --theme-path=wp-content/themes/your-theme",
 "theme-json:watch": "wp-theme-json-compiler watch --theme-path=wp-content/themes/your-theme"
+
 ```
 
 ## Configuration
@@ -63,3 +75,4 @@ This tool is provided "as is" without warranty of any kind, express or implied. 
 ## License
 
 GNU General Public License version 2 (or later) (GPLv2)
+```
