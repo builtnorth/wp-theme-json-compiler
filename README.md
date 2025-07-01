@@ -2,11 +2,11 @@
 
 A modular theme.json compiler for WordPress themes.
 
-## ⚠️ Warning
-
-**The `compile` and `watch` commands will overwrite your `theme.json` file in the specified theme directory.**
-
-- Always commit or back up your `theme.json` before running these commands if you have unsaved changes.
+> ⚠️ **Warning**
+>
+> The `compile` and `watch` commands will overwrite your `theme.json` file in the specified theme directory.
+>
+> A backup is created automatically, but you may want to manually make one as well since this tool has not been thoroughly tested yet.
 
 ## Features
 
@@ -19,8 +19,6 @@ A modular theme.json compiler for WordPress themes.
 
 ```bash
 npm install @builtnorth/wp-theme-json-compiler
-```
-
 ```
 
 ## CLI Commands
@@ -75,4 +73,3 @@ This tool is provided "as is" without warranty of any kind, express or implied. 
 ## License
 
 GNU General Public License version 2 (or later) (GPLv2)
-```
