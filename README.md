@@ -58,13 +58,17 @@ Add to your root `package.json` scripts:
 - By default, operates on `theme.json` and `theme-config` in the current working directory.
 - Use `--theme-path` to specify a custom theme directory.
 
-## Automatic Backup Logic
+## Automatic Backups
 
 Before overwriting your existing `theme.json`, the compiler automatically creates a backup named `theme.backup.json` in the same theme directory. This occurs every time you run the `compile` command, and once per session when using the `watch` command (the first time a change is detected).
 
 - The backup file is always named `theme.backup.json` and will be overwritten on subsequent runs.
 - This helps prevent accidental data loss. To restore, simply rename or copy `theme.backup.json` back to `theme.json`.
 - Always verify your changes and keep your own version control backups for extra safety.
+
+## Credits
+
+Thanks to [Nick Diego's article on managing theme.json files](https://nickdiego.com/stop-struggling-with-cumbersome-theme-json-files/) that came up in search results when looking into spitting up a monolithic theme.json file.
 
 ## Disclaimer
 
