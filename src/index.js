@@ -138,9 +138,30 @@ function splitThemeJson() {
         const settingsSections = {
             typography: ["typography"],
             colors: ["color"],
-            layout: ["layout", "spacing"],
+            layout: ["layout"],
+            spacing: ["spacing"],
             custom: ["custom"],
+            background: ["background"],
+            border: ["border"],
+            dimensions: ["dimensions"],
+            position: ["position"],
+            shadow: ["shadow"],
         };
+
+        // Handle top-level boolean settings
+        const topLevelSettings = [
+            "appearanceTools",
+            "useRootPaddingAwareAlignments",
+        ];
+        const topLevelData = {};
+        for (const key of topLevelSettings) {
+            if (themeData.settings[key] !== undefined) {
+                topLevelData[key] = themeData.settings[key];
+            }
+        }
+        if (Object.keys(topLevelData).length) {
+            writeJsModule(path.join(settingsDir, "general.js"), topLevelData);
+        }
         for (const [filename, keys] of Object.entries(settingsSections)) {
             const sectionData = {};
             for (const key of keys) {

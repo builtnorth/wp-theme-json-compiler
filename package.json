@@ -1,19 +1,19 @@
 {
-	"name": "@builtnorth/wp-theme-json-compiler",
-	"version": "0.1.0",
-	"description": "A modular theme.json compiler for WordPress themes.",
-	"main": "src/index.js",
-	"bin": {
-		"wp-theme-json-compiler": "src/index.js"
-	},
-	"scripts": {
-		"compile": "node src/index.js compile",
-		"split": "node src/index.js split",
-		"watch": "node src/index.js watch"
-	},
-	"author": "Built North",
-	"license": "MIT",
-	"dependencies": {
-		"chokidar": "^3.6.0"
-	}
+    "name": "@builtnorth/wp-theme-json-compiler",
+    "version": "0.2.0",
+    "description": "A modular theme.json compiler for WordPress themes.",
+    "main": "src/index.js",
+    "bin": {
+        "wp-theme-json-compiler": "src/index.js"
+    },
+    "scripts": {
+        "compile": "node src/index.js compile",
+        "split": "node src/index.js split",
+        "watch": "node src/index.js watch"
+    },
+    "author": "Built North",
+    "license": "MIT",
+    "dependencies": {
+        "chokidar": "^3.6.0"
+    }
 }
