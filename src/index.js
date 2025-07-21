@@ -49,6 +49,138 @@ function mergeDeep(target, source) {
     return target;
 }
 
+function expandWildcardBlocks(blocksConfig) {
+    if (!blocksConfig || typeof blocksConfig !== "object") {
+        return blocksConfig;
+    }
+
+    const expanded = {};
+    const wildcardConfig = blocksConfig["*"];
+
+    // Common block patterns that should receive wildcard settings
+    const commonBlocks = [
+        // Core blocks
+        "core/paragraph",
+        "core/heading",
+        "core/list",
+        "core/list-item",
+        "core/quote",
+        "core/audio",
+        "core/button",
+        "core/buttons",
+        "core/columns",
+        "core/column",
+        "core/cover",
+        "core/file",
+        "core/gallery",
+        "core/group",
+        "core/image",
+        "core/media-text",
+        "core/more",
+        "core/nextpage",
+        "core/preformatted",
+        "core/pullquote",
+        "core/separator",
+        "core/shortcode",
+        "core/spacer",
+        "core/table",
+        "core/verse",
+        "core/video",
+        "core/code",
+        "core/details",
+        "core/freeform",
+        "core/html",
+        "core/search",
+        "core/social-links",
+        "core/site-logo",
+        "core/navigation",
+        "core/post-template",
+        "core/post-title",
+        "core/post-excerpt",
+        "core/post-content",
+        "core/post-featured-image",
+        "core/post-comments",
+        "core/post-comments-form",
+        "core/post-comments-count",
+        "core/post-comments-link",
+        "core/post-date",
+        "core/post-author",
+        "core/post-terms",
+        "core/post-navigation-link",
+        "core/query",
+        "core/query-title",
+        "core/query-pagination",
+        "core/query-pagination-next",
+        "core/query-pagination-previous",
+        "core/query-pagination-numbers",
+        "core/query-no-results",
+        "core/read-more",
+        "core/site-tagline",
+        "core/site-title",
+        "core/archives",
+        "core/calendar",
+        "core/categories",
+        "core/latest-comments",
+        "core/latest-posts",
+        "core/page-list",
+        "core/rss",
+        "core/social-link",
+        "core/tag-cloud",
+        "core/home-link",
+        "core/loginout",
+        "core/term-description",
+        "core/query-loop",
+        "core/template-part",
+        "core/avatar",
+        "core/post-author-biography",
+        "core/comment-author-avatar",
+        "core/comment-author-name",
+        "core/comment-content",
+        "core/comment-date",
+        "core/comment-edit-link",
+        "core/comment-reply-link",
+        "core/comment-template",
+        "core/comments",
+        "core/comments-pagination",
+        "core/comments-pagination-next",
+        "core/comments-pagination-numbers",
+        "core/comments-pagination-previous",
+        "core/comments-title",
+        "core/embed",
+        "core/block",
+        "core/text",
+        "core/row",
+        "core/grid",
+        // Polaris blocks
+        "polaris/accordion",
+        "polaris/business-card",
+        "polaris/section",
+        "polaris/container",
+        // Compass blocks
+        "compass/single-details",
+        "compass/single-features",
+        "compass/single-pricing",
+    ];
+
+    // Apply wildcard config to common blocks if it exists
+    if (wildcardConfig) {
+        for (const blockName of commonBlocks) {
+            if (!blocksConfig[blockName]) {
+                expanded[blockName] = wildcardConfig;
+            }
+        }
+    }
+
+    // Add all explicit block configurations (these override wildcard settings)
+    for (const [blockName, config] of Object.entries(blocksConfig)) {
+        if (blockName !== "*") {
+            expanded[blockName] = config;
+        }
+    }
+
+    return expanded;
+}
+
 function compileDirectory(dirPath, excludeDirs = []) {
     if (!fs.existsSync(dirPath)) return {};
     const files = fs.readdirSync(dirPath).filter((f) => f.endsWith(".js"));
@@ -307,6 +439,10 @@ function compileThemeJson({ skipBackup = false } = {}) {
         path.join(THEME_CONFIG_DIR, "settings"),
     );
     if (Object.keys(settingsData).length) {
+        // Expand wildcard blocks if they exist
+        if (settingsData.blocks) {
+            settingsData.blocks = expandWildcardBlocks(settingsData.blocks);
+        }
         compiled.settings = settingsData;
     }
 
