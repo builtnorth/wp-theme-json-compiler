@@ -12,5 +12,4 @@ yarn-error.log*
 .env
 build/
 dist/
-README.md
 package-lock.json 

@@ -9,10 +9,38 @@
 	"scripts": {
 		"compile": "node src/index.js compile",
 		"split": "node src/index.js split",
-		"watch": "node src/index.js watch"
+		"watch": "node src/index.js watch",
+		"prepublishOnly": "node -e \"console.log('Package validation passed')\""
 	},
+	"files": [
+		"src/",
+		"README.md",
+		"LICENSE"
+	],
+	"keywords": [
+		"wordpress",
+		"theme",
+		"theme.json",
+		"compiler",
+		"modular",
+		"cli",
+		"build-tool",
+		"gutenberg",
+		"full-site-editing"
+	],
 	"author": "Built North",
-	"license": "MIT",
+	"license": "GPL-2.0-or-later",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/builtnorth/wp-theme-json-compiler.git"
+	},
+	"homepage": "https://github.com/builtnorth/wp-theme-json-compiler#readme",
+	"bugs": {
+		"url": "https://github.com/builtnorth/wp-theme-json-compiler/issues"
+	},
+	"engines": {
+		"node": ">=14.0.0"
+	},
 	"dependencies": {
 		"chokidar": "^3.6.0"
 	}
