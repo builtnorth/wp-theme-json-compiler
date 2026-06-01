@@ -15,16 +15,39 @@ function getThemePathArg() {
             themePath = args[i + 1];
         }
     }
-    return themePath ? path.resolve(process.cwd(), themePath) : process.cwd();
+
+    if (!themePath) {
+        return process.cwd();
+    }
+
+    const resolved = path.resolve(process.cwd(), themePath);
+    const cwd = process.cwd();
+
+    // Prevent path traversal: --theme-path must resolve to a path within the
+    // current working directory so CI pipelines cannot accidentally point this
+    // tool at a directory outside the project tree.
+    if (resolved !== cwd && !resolved.startsWith(cwd + path.sep)) {
+        throw new Error(
+            `[wp-theme-json-compiler] --theme-path must be within the current working directory.\n` +
+            `  Resolved: ${resolved}\n  CWD:      ${cwd}`,
+        );
+    }
+
+    return resolved;
 }
 
 const THEME_BASE = getThemePathArg();
 const THEME_CONFIG_DIR = path.join(THEME_BASE, "theme-config");
 const THEME_JSON_PATH = path.join(THEME_BASE, "theme.json");
 
+// Theme config files are intentionally executed as JavaScript (not parsed as JSON)
+// to allow dynamic configuration — functions, conditionals, computed values —
+// the same pattern as webpack.config.js or vite.config.js. Only files inside
+// THEME_CONFIG_DIR are ever passed here; the bounds check in getThemePathArg()
+// ensures THEME_CONFIG_DIR itself cannot point outside the project tree.
 function requireIfExists(filePath) {
     if (fs.existsSync(filePath)) {
-        // Clear require cache to allow reloading
+        // Clear require cache to allow reloading on watch re-runs.
         delete require.cache[require.resolve(filePath)];
         return require(filePath);
     }
