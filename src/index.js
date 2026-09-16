@@ -241,6 +241,34 @@ function compileBlocksFromDir(blocksDir) {
     return allBlocks;
 }
 
+// Collects human-readable paths where `compiled` fails to reproduce `source`.
+// Used by the round-trip guard; order-insensitive for object keys, strict for
+// arrays and scalars.
+function diffThemeData(source, compiled, basePath = "", differences = []) {
+    const isPlainObject = (value) =>
+        value && typeof value === "object" && !Array.isArray(value);
+
+    if (isPlainObject(source) && isPlainObject(compiled)) {
+        for (const key of Object.keys(source)) {
+            const keyPath = basePath + "/" + key;
+            if (!(key in compiled)) {
+                differences.push(`dropped ${keyPath}`);
+            } else {
+                diffThemeData(source[key], compiled[key], keyPath, differences);
+            }
+        }
+        for (const key of Object.keys(compiled)) {
+            if (!(key in source)) {
+                differences.push(`added ${basePath}/${key}`);
+            }
+        }
+    } else if (JSON.stringify(source) !== JSON.stringify(compiled)) {
+        differences.push(`changed ${basePath || "/"}`);
+    }
+
+    return differences;
+}
+
 function writeJsModule(filePath, obj, comment = null) {
     let content = "";
     if (comment) {
@@ -267,6 +295,29 @@ function splitThemeJson() {
         templateParts: ["templateParts"],
         patterns: ["patterns"],
     };
+
+    // Any top-level key not claimed by a section above (e.g. "$schema",
+    // "title") is written to misc.js. Without this catch-all the key would
+    // never reach theme-config/ and the next compile would silently drop it.
+    const claimedTopLevel = new Set([
+        ...Object.values(sections).flat(),
+        "settings",
+        "styles",
+    ]);
+    const miscTopLevel = {};
+    for (const key of Object.keys(themeData)) {
+        if (!claimedTopLevel.has(key)) {
+            miscTopLevel[key] = themeData[key];
+        }
+    }
+    if (Object.keys(miscTopLevel).length) {
+        writeJsModule(
+            path.join(THEME_CONFIG_DIR, "misc.js"),
+            miscTopLevel,
+            "Top-level keys with no dedicated section file.",
+        );
+    }
+
     for (const [filename, keys] of Object.entries(sections)) {
         const sectionData = {};
         for (const key of keys) {
@@ -332,7 +383,30 @@ function splitThemeJson() {
             }
         }
 
-        // Handle block settings by prefix
+        // Settings keys with no dedicated file above (e.g. "viewport", or
+        // anything a future WordPress release adds) go to misc.js so they
+        // survive the next compile.
+        const claimedSettings = new Set([
+            ...Object.values(settingsSections).flat(),
+            ...topLevelSettings,
+            "blocks",
+        ]);
+        const miscSettings = {};
+        for (const key of Object.keys(themeData.settings)) {
+            if (!claimedSettings.has(key)) {
+                miscSettings[key] = themeData.settings[key];
+            }
+        }
+        if (Object.keys(miscSettings).length) {
+            writeJsModule(
+                path.join(settingsDir, "misc.js"),
+                miscSettings,
+                "Settings keys with no dedicated section file.",
+            );
+        }
+
+        // Handle block settings by prefix. Written even when empty so an
+        // intentional `"blocks": {}` is not lost on the round trip.
         if (themeData.settings.blocks) {
             const blockSettings = themeData.settings.blocks;
             const blockPrefixes = new Set();
@@ -362,6 +436,14 @@ function splitThemeJson() {
                     });
                 }
             }
+
+            // An empty blocks object yields no prefixes and therefore no
+            // files; emit it explicitly so the round trip stays lossless.
+            if (!blockPrefixes.size) {
+                writeJsModule(path.join(settingsDir, "blocks.js"), {
+                    blocks: {},
+                });
+            }
         }
     }
 
@@ -389,6 +471,23 @@ function splitThemeJson() {
             writeJsModule(path.join(stylesDir, "elements.js"), {
                 elements: themeData.styles.elements,
             });
+        }
+
+        // Styles keys with no dedicated file above (e.g. "css", "variations",
+        // "shadow", "filter") go to misc.js so they survive the next compile.
+        const claimedStyles = new Set([...globalKeys, "elements", "blocks"]);
+        const miscStyles = {};
+        for (const key of Object.keys(themeData.styles)) {
+            if (!claimedStyles.has(key)) {
+                miscStyles[key] = themeData.styles[key];
+            }
+        }
+        if (Object.keys(miscStyles).length) {
+            writeJsModule(
+                path.join(stylesDir, "misc.js"),
+                miscStyles,
+                "Styles keys with no dedicated section file.",
+            );
         }
 
         // Handle block styles by prefix
@@ -430,7 +529,28 @@ function splitThemeJson() {
             }
         }
     }
+    // Round-trip guard: recompiling the files just written must reproduce the
+    // source theme.json exactly. A mismatch means a key reached no file and
+    // the next compile would silently delete it, so fail loudly here instead.
+    const differences = diffThemeData(themeData, buildCompiledThemeJson());
+    if (differences.length) {
+        console.error(
+            "\n[wp-theme-json-compiler] Round-trip verification FAILED.\n" +
+                "  Recompiling theme-config/ would not reproduce theme.json.\n" +
+                "  Running `compile` now would lose data, so theme.json was left untouched.\n",
+        );
+        for (const difference of differences) {
+            console.error("    " + difference);
+        }
+        console.error(
+            "\n  theme-config/ has been written but is incomplete. Please report\n" +
+                "  the paths above so the missing keys can be handled.\n",
+        );
+        process.exit(1);
+    }
+
     console.log("Split theme.json into modular .js files at", THEME_CONFIG_DIR);
+    console.log("Round-trip verified: compile reproduces theme.json exactly.");
 }
 
 function backupThemeJson(backupName = "theme.backup.json") {
@@ -441,8 +561,11 @@ function backupThemeJson(backupName = "theme.backup.json") {
     }
 }
 
-function compileThemeJson({ skipBackup = false } = {}) {
-    if (!skipBackup) backupThemeJson();
+// Builds the theme.json object from theme-config/ without writing anything.
+// Split out so the round-trip guard in splitThemeJson() can verify against the
+// exact logic compileThemeJson() uses, rather than a reimplementation that
+// could drift from it.
+function buildCompiledThemeJson() {
     let compiled = {};
 
     // Main sections (excluding settings and styles which are handled granularly)
@@ -451,6 +574,7 @@ function compileThemeJson({ skipBackup = false } = {}) {
         "customTemplates.js",
         "templateParts.js",
         "patterns.js",
+        "misc.js",
     ];
     for (const file of mainFiles) {
         const data = requireIfExists(path.join(THEME_CONFIG_DIR, file));
@@ -486,9 +610,67 @@ function compileThemeJson({ skipBackup = false } = {}) {
         compiled.styles = stylesData;
     }
 
+    return compiled;
+}
+
+// Guards against compiling a theme-config/ that would delete existing
+// theme.json data — e.g. one produced by an older splitter that dropped keys it
+// did not recognise, or one where a config file was removed by accident.
+//
+// Only losses are reported. Additions and modifications are what `compile`
+// exists to do, so `added` paths are filtered out and edits are expected; a
+// `changed` path is reported because it is the shape a partial loss takes (an
+// object replaced by a smaller one), and is cheap to confirm as intentional.
+function findCompileLosses(compiled) {
+    if (!fs.existsSync(THEME_JSON_PATH)) return [];
+
+    let existing;
+    try {
+        existing = JSON.parse(fs.readFileSync(THEME_JSON_PATH, "utf8"));
+    } catch (error) {
+        // An unparseable theme.json has nothing to preserve; let compile
+        // overwrite it rather than blocking on a file that is already broken.
+        return [];
+    }
+
+    return diffThemeData(existing, compiled).filter(
+        (difference) => !difference.startsWith("added "),
+    );
+}
+
+function reportCompileLosses(losses) {
+    console.error(
+        "\n[wp-theme-json-compiler] Refusing to compile: this would remove\n" +
+            "  data that is currently in theme.json.\n",
+    );
+    for (const loss of losses) {
+        console.error("    " + loss);
+    }
+    console.error(
+        "\n  If the removal is intentional, delete the keys from theme.json\n" +
+            "  first, or re-run `split` to rebuild theme-config/ from it.\n",
+    );
+}
+
+function compileThemeJson({ skipBackup = false, exitOnLoss = true } = {}) {
+    const compiled = buildCompiledThemeJson();
+
+    const losses = findCompileLosses(compiled);
+    if (losses.length) {
+        reportCompileLosses(losses);
+        // Checked before the backup so a refused compile leaves both
+        // theme.json and theme.backup.json exactly as they were.
+        if (exitOnLoss) process.exit(1);
+        console.error("  theme.json left unchanged; still watching.\n");
+        return false;
+    }
+
+    if (!skipBackup) backupThemeJson();
+
     // Write theme.json
     fs.writeFileSync(THEME_JSON_PATH, JSON.stringify(compiled, null, 2));
     console.log("Compiled theme.json at:", THEME_JSON_PATH);
+    return true;
 }
 
 function watchThemeConfig() {
@@ -504,14 +686,23 @@ function watchThemeConfig() {
         persistent: true,
     });
     function recompile() {
-        if (!backupMade) {
-            backupThemeJson();
-            backupMade = true;
-        }
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
             console.log("Change detected, recompiling theme.json...");
-            compileThemeJson({ skipBackup: true });
+            // Backed up inside the debounce so the session's backup captures
+            // the state just before the first write that actually lands, and
+            // so a refused compile does not consume the one-per-session
+            // backup. exitOnLoss is off: a half-saved file should pause
+            // writing, not terminate a long-running watch.
+            if (!backupMade) {
+                backupThemeJson();
+                backupMade = true;
+            }
+            const written = compileThemeJson({
+                skipBackup: true,
+                exitOnLoss: false,
+            });
+            if (!written) backupMade = false;
         }, 100);
     }
     watcher
