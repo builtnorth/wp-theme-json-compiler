@@ -613,64 +613,16 @@ function buildCompiledThemeJson() {
     return compiled;
 }
 
-// Guards against compiling a theme-config/ that would delete existing
-// theme.json data — e.g. one produced by an older splitter that dropped keys it
-// did not recognise, or one where a config file was removed by accident.
-//
-// Only losses are reported. Additions and modifications are what `compile`
-// exists to do, so `added` paths are filtered out and edits are expected; a
-// `changed` path is reported because it is the shape a partial loss takes (an
-// object replaced by a smaller one), and is cheap to confirm as intentional.
-function findCompileLosses(compiled) {
-    if (!fs.existsSync(THEME_JSON_PATH)) return [];
-
-    let existing;
-    try {
-        existing = JSON.parse(fs.readFileSync(THEME_JSON_PATH, "utf8"));
-    } catch (error) {
-        // An unparseable theme.json has nothing to preserve; let compile
-        // overwrite it rather than blocking on a file that is already broken.
-        return [];
-    }
-
-    return diffThemeData(existing, compiled).filter(
-        (difference) => !difference.startsWith("added "),
-    );
-}
-
-function reportCompileLosses(losses) {
-    console.error(
-        "\n[wp-theme-json-compiler] Refusing to compile: this would remove\n" +
-            "  data that is currently in theme.json.\n",
-    );
-    for (const loss of losses) {
-        console.error("    " + loss);
-    }
-    console.error(
-        "\n  If the removal is intentional, delete the keys from theme.json\n" +
-            "  first, or re-run `split` to rebuild theme-config/ from it.\n",
-    );
-}
-
-function compileThemeJson({ skipBackup = false, exitOnLoss = true } = {}) {
+// theme-config/ is the source of truth: compile writes exactly what it
+// describes, including edits to and removals of keys already in theme.json.
+function compileThemeJson({ skipBackup = false } = {}) {
     const compiled = buildCompiledThemeJson();
-
-    const losses = findCompileLosses(compiled);
-    if (losses.length) {
-        reportCompileLosses(losses);
-        // Checked before the backup so a refused compile leaves both
-        // theme.json and theme.backup.json exactly as they were.
-        if (exitOnLoss) process.exit(1);
-        console.error("  theme.json left unchanged; still watching.\n");
-        return false;
-    }
 
     if (!skipBackup) backupThemeJson();
 
     // Write theme.json
     fs.writeFileSync(THEME_JSON_PATH, JSON.stringify(compiled, null, 2));
     console.log("Compiled theme.json at:", THEME_JSON_PATH);
-    return true;
 }
 
 function watchThemeConfig() {
@@ -690,19 +642,12 @@ function watchThemeConfig() {
         timeout = setTimeout(() => {
             console.log("Change detected, recompiling theme.json...");
             // Backed up inside the debounce so the session's backup captures
-            // the state just before the first write that actually lands, and
-            // so a refused compile does not consume the one-per-session
-            // backup. exitOnLoss is off: a half-saved file should pause
-            // writing, not terminate a long-running watch.
+            // the state just before the first write.
             if (!backupMade) {
                 backupThemeJson();
                 backupMade = true;
             }
-            const written = compileThemeJson({
-                skipBackup: true,
-                exitOnLoss: false,
-            });
-            if (!written) backupMade = false;
+            compileThemeJson({ skipBackup: true });
         }, 100);
     }
     watcher
