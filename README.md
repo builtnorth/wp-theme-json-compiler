@@ -18,7 +18,7 @@ A modular theme.json compiler for WordPress themes.
 ## Installation
 
 ```bash
-npm install @builtnorth/wp-theme-json-compiler
+npm install @siratik/wp-theme-json-compiler
 ```
 
 ## CLI Commands
@@ -33,9 +33,9 @@ npm install @builtnorth/wp-theme-json-compiler
 
 ```
 
-npx @builtnorth/wp-theme-json-compiler compile --theme-path=wp-content/themes/your-theme
-npx @builtnorth/wp-theme-json-compiler split --theme-path=wp-content/themes/your-theme
-npx @builtnorth/wp-theme-json-compiler watch --theme-path=wp-content/themes/your-theme
+npx @siratik/wp-theme-json-compiler compile --theme-path=wp-content/themes/your-theme
+npx @siratik/wp-theme-json-compiler split --theme-path=wp-content/themes/your-theme
+npx @siratik/wp-theme-json-compiler watch --theme-path=wp-content/themes/your-theme
 
 ```
 

@@ -1,5 +1,5 @@
 {
-	"name": "@builtnorth/wp-theme-json-compiler",
+	"name": "@siratik/wp-theme-json-compiler",
 	"version": "1.0.0",
 	"description": "A modular theme.json compiler for WordPress themes.",
 	"main": "src/index.js",
