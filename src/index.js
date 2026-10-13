@@ -174,11 +174,11 @@ function expandWildcardBlocks(blocksConfig) {
         "core/text",
         "core/row",
         "core/grid",
-        // Polaris blocks
-        "polaris/accordion",
-        "polaris/business-card",
-        "polaris/section",
-        "polaris/container",
+        // Kitaris blocks
+        "kitaris/accordion",
+        "kitaris/business-card",
+        "kitaris/section",
+        "kitaris/container",
         // Compass blocks
         "compass/single-details",
         "compass/single-features",
