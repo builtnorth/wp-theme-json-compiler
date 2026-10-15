@@ -14,8 +14,7 @@
 	},
 	"files": [
 		"src/",
-		"README.md",
-		"LICENSE"
+		"README.md"
 	],
 	"keywords": [
 		"wordpress",

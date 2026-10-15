@@ -4,13 +4,27 @@ const fs = require("fs");
 const path = require("path");
 const chokidar = require("chokidar");
 
+/**
+ * Resolve symlinks in a path; the theme path must exist.
+ */
+function realpathOrThrow(target) {
+    try {
+        return fs.realpathSync(target);
+    } catch {
+        throw new Error(
+            `[wp-theme-json-compiler] --theme-path does not exist: ${target}`,
+        );
+    }
+}
+
 // Parse CLI args for --theme-path
 function getThemePathArg() {
     const args = process.argv.slice(2);
     let themePath = null;
     for (let i = 0; i < args.length; i++) {
         if (args[i].startsWith("--theme-path=")) {
-            themePath = args[i].split("=")[1];
+            // Keep everything after the first "=" so paths containing "=" survive.
+            themePath = args[i].slice("--theme-path=".length);
         } else if (args[i] === "--theme-path" && args[i + 1]) {
             themePath = args[i + 1];
         }
@@ -20,12 +34,13 @@ function getThemePathArg() {
         return process.cwd();
     }
 
-    const resolved = path.resolve(process.cwd(), themePath);
-    const cwd = process.cwd();
+    const cwd = realpathOrThrow(process.cwd());
+    const resolved = realpathOrThrow(path.resolve(process.cwd(), themePath));
 
     // Prevent path traversal: --theme-path must resolve to a path within the
     // current working directory so CI pipelines cannot accidentally point this
-    // tool at a directory outside the project tree.
+    // tool at a directory outside the project tree. Both sides are real paths,
+    // so a symlink inside the project cannot point the tool somewhere else.
     if (resolved !== cwd && !resolved.startsWith(cwd + path.sep)) {
         throw new Error(
             `[wp-theme-json-compiler] --theme-path must be within the current working directory.\n` +
@@ -54,8 +69,14 @@ function requireIfExists(filePath) {
     return {};
 }
 
+// Keys that would write to an object's prototype instead of the object.
+const UNSAFE_MERGE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function mergeDeep(target, source) {
     for (const key of Object.keys(source)) {
+        if (UNSAFE_MERGE_KEYS.has(key)) {
+            continue;
+        }
         if (
             source[key] &&
             typeof source[key] === "object" &&
@@ -269,6 +290,38 @@ function diffThemeData(source, compiled, basePath = "", differences = []) {
     return differences;
 }
 
+// Block namespaces become file names, so only plain names are allowed.
+const BLOCK_PREFIX_PATTERN = /^[a-z0-9_-]+$/;
+
+/**
+ * The namespace part of a block name ("core" for "core/paragraph"). Throws
+ * for anything that is not a plain file name, e.g. "..\\..\\evil/x".
+ */
+function getBlockPrefix(blockName) {
+    const prefix = blockName.split("/")[0];
+    if (!BLOCK_PREFIX_PATTERN.test(prefix)) {
+        throw new Error(
+            `[wp-theme-json-compiler] Invalid block name "${blockName}": ` +
+                "the namespace may only contain a-z, 0-9, _ and -.",
+        );
+    }
+    return prefix;
+}
+
+/**
+ * The file a block prefix is written to, guaranteed to be inside dir.
+ */
+function getBlockPrefixFile(dir, prefix) {
+    const base = path.resolve(dir);
+    const filePath = path.resolve(base, prefix + ".js");
+    if (path.dirname(filePath) !== base) {
+        throw new Error(
+            `[wp-theme-json-compiler] Refusing to write outside ${base}: ${filePath}`,
+        );
+    }
+    return filePath;
+}
+
 function writeJsModule(filePath, obj, comment = null) {
     let content = "";
     if (comment) {
@@ -284,6 +337,23 @@ function splitThemeJson() {
         process.exit(1);
     }
     const themeData = JSON.parse(fs.readFileSync(THEME_JSON_PATH, "utf8"));
+
+    // Check every block name before writing anything, so a bad name cannot
+    // leave theme-config/ half written.
+    try {
+        for (const blocks of [
+            themeData.settings?.blocks,
+            themeData.styles?.blocks,
+        ]) {
+            if (blocks && typeof blocks === "object") {
+                Object.keys(blocks).forEach(getBlockPrefix);
+            }
+        }
+    } catch (error) {
+        console.error(error.message);
+        process.exit(1);
+    }
+
     if (!fs.existsSync(THEME_CONFIG_DIR)) {
         fs.mkdirSync(THEME_CONFIG_DIR, { recursive: true });
     }
@@ -413,7 +483,7 @@ function splitThemeJson() {
 
             // Collect all block prefixes
             for (const blockName of Object.keys(blockSettings)) {
-                const prefix = blockName.split("/")[0];
+                const prefix = getBlockPrefix(blockName);
                 blockPrefixes.add(prefix);
             }
 
@@ -431,7 +501,7 @@ function splitThemeJson() {
                     }
                 }
                 if (Object.keys(prefixData).length) {
-                    writeJsModule(path.join(settingsDir, prefix + ".js"), {
+                    writeJsModule(getBlockPrefixFile(settingsDir, prefix), {
                         blocks: prefixData,
                     });
                 }
@@ -497,7 +567,7 @@ function splitThemeJson() {
 
             // Collect all block prefixes
             for (const blockName of Object.keys(blockStyles)) {
-                const prefix = blockName.split("/")[0];
+                const prefix = getBlockPrefix(blockName);
                 blockPrefixes.add(prefix);
             }
 
@@ -522,7 +592,7 @@ function splitThemeJson() {
                 }
                 if (Object.keys(prefixData).length) {
                     writeJsModule(
-                        path.join(blocksDir, prefix + ".js"),
+                        getBlockPrefixFile(blocksDir, prefix),
                         prefixData,
                     );
                 }
