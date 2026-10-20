@@ -1,4 +1,4 @@
-# WP Theme JSON Compiler
+# Siratik WP Theme JSON Compiler
 
 A modular theme.json compiler for WordPress themes.
 
@@ -70,10 +70,26 @@ Before overwriting your existing `theme.json`, the compiler automatically create
 
 Thanks to [Nick Diego's article on managing theme.json files](https://nickdiego.com/stop-struggling-with-cumbersome-theme-json-files/) that came up in search results when looking into spitting up a monolithic theme.json file.
 
-## Disclaimer
-
-This tool is provided "as is" without warranty of any kind, express or implied. Use at your own risk. Tool will override currenth theme.json files, so please understand that and/or have a backup. The authors and contributors are not responsible for any damages or liabilities arising from the use of this library. Always test thoroughly in your specific environment before deploying to production.
-
 ## License
 
-GNU General Public License version 2 (or later) (GPLv2)
+GPL-3.0-or-later — see `LICENSE`.
+
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind, express or
+implied, including the warranties of merchantability and fitness for a
+particular purpose. To the extent permitted by applicable law, the authors and
+copyright holders, together with their parent, subsidiary, and affiliated
+companies and contributors, are not liable for any direct, indirect,
+incidental, or consequential damages arising from its use or inability to use
+it, including loss of data, revenue, or site availability.
+
+The software does not guarantee that your site is secure, ranks in search
+results, or complies with privacy or other laws; that remains the site owner's
+responsibility. AI-generated content can be inaccurate and should be reviewed
+before publishing. Third-party services the software connects to are governed
+by their own terms.
+
+Keep a current backup and test changes on a staging site before applying them
+to a live site. See sections 15 and 16 of the GNU General Public License,
+version 3, for the full terms.
