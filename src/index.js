@@ -195,6 +195,7 @@ function expandWildcardBlocks(blocksConfig) {
         "core/text",
         "core/row",
         "core/grid",
+        "core/accordion",
         // Kitaris blocks
         "kitaris/accordion",
         "kitaris/business-card",
